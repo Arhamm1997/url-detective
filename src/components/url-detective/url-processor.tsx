@@ -2,6 +2,7 @@
 
 import {
   AlertCircle,
+  AlertTriangle,
   CheckCircle2,
   ChevronDown,
   ClipboardCopy,
@@ -24,7 +25,6 @@ import React, {
 } from 'react';
 
 import { checkUrl } from '@/app/actions';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -55,7 +55,6 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
-import { cn } from '@/lib/utils';
 
 type ProcessedUrl = {
   id: string;
@@ -347,9 +346,7 @@ export default function UrlProcessor() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="w-[55%]">URL</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Details</TableHead>
+                        <TableHead>URL Analysis</TableHead>
                         <TableHead className="text-right">Threat</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -358,33 +355,30 @@ export default function UrlProcessor() {
                         const flag = maliciousFlags.get(item.url);
                         return (
                           <TableRow key={item.id}>
-                            <TableCell className="max-w-xs truncate font-mono text-sm">
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <span>{item.url}</span>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p>{item.url}</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            </TableCell>
                             <TableCell>
-                              <Badge
-                                variant="outline"
-                                className={cn(
-                                  !item.isDuplicate
-                                    ? 'border-green-500/50 text-green-600 dark:text-green-400'
-                                    : 'border-amber-500/50 text-amber-600 dark:text-amber-400'
+                              <div className="flex items-center gap-3">
+                                {item.isDuplicate ? (
+                                  <AlertTriangle className="h-5 w-5 shrink-0 text-amber-500" />
+                                ) : (
+                                  <CheckCircle2 className="h-5 w-5 shrink-0 text-green-500" />
                                 )}
-                              >
-                                {item.isDuplicate ? 'DUPLICATE' : 'UNIQUE'}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-xs text-muted-foreground">
-                              {item.isDuplicate
-                                ? `${item.count} times in rows: ${item.positions.join(', ')}`
-                                : `Row: ${item.positions[0]}`
-                              }
+                                <div className="flex-1 overflow-hidden">
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <p className="truncate font-mono text-sm">{item.url}</p>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p>{item.url}</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                  <p className="text-xs text-muted-foreground">
+                                    {item.isDuplicate
+                                      ? `DUPLICATE (${item.count} times) - Found in rows: ${item.positions.join(', ')}`
+                                      : `UNIQUE - Found in row: ${item.positions[0]}`
+                                    }
+                                  </p>
+                                </div>
+                              </div>
                             </TableCell>
                             <TableCell className="text-right">
                               {flag?.isLoading ? (
