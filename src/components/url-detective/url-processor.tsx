@@ -57,13 +57,12 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
-type UrlStatus = 'NEW' | 'DUPLICATE';
-
 type ProcessedUrl = {
   id: string;
   url: string;
-  status: UrlStatus;
+  isDuplicate: boolean;
   count: number;
+  positions: number[];
 };
 
 type MaliciousFlag = {
@@ -106,34 +105,32 @@ export default function UrlProcessor() {
       .split('\n')
       .map((line) => line.trim())
       .filter(Boolean);
-
-    const urlCounts = new Map<string, number>();
-    lines.forEach((line) => {
-      urlCounts.set(line, (urlCounts.get(line) || 0) + 1);
+    
+    const urlInfo = new Map<string, { count: number; positions: number[] }>();
+    lines.forEach((line, index) => {
+        const info = urlInfo.get(line) || { count: 0, positions: [] };
+        info.count++;
+        info.positions.push(index + 1);
+        urlInfo.set(line, info);
     });
 
-    const seenUrls = new Set<string>();
-    const processed: ProcessedUrl[] = lines.map((url, index) => {
-      const isFirstOccurrence = !seenUrls.has(url);
-      if (isFirstOccurrence) {
-        seenUrls.add(url);
-      }
-      return {
-        id: `${url}-${index}`,
+    const processed: ProcessedUrl[] = Array.from(urlInfo.entries()).map(([url, info]) => ({
+        id: url,
         url,
-        status: isFirstOccurrence ? 'NEW' : 'DUPLICATE',
-        count: urlCounts.get(url) || 1,
-      };
-    });
+        isDuplicate: info.count > 1,
+        count: info.count,
+        positions: info.positions,
+    })).sort((a, b) => a.positions[0] - b.positions[0]);
 
     setResults(processed);
 
-    const uniqueCount = seenUrls.size;
     const totalCount = lines.length;
+    const uniqueUrlCount = urlInfo.size;
+    
     setStats({
       total: totalCount,
-      unique: uniqueCount,
-      duplicates: totalCount - uniqueCount,
+      unique: uniqueUrlCount,
+      duplicates: totalCount - uniqueUrlCount,
     });
   }, [debouncedText]);
 
@@ -168,9 +165,10 @@ export default function UrlProcessor() {
   }, [toast]);
 
   const handleCopyUnique = useCallback(() => {
-    const uniqueUrls = Array.from(
-      new Set(results.filter((r) => r.status === 'NEW').map((r) => r.url))
-    ).join('\n');
+    const uniqueUrls = results
+      .filter((r) => !r.isDuplicate)
+      .map((r) => r.url)
+      .join('\n');
     if (uniqueUrls) {
       handleCopyToClipboard(uniqueUrls, 'Unique URLs');
     } else {
@@ -203,14 +201,14 @@ export default function UrlProcessor() {
       const json = JSON.stringify(results, null, 2);
       downloadFile(json, 'url-detective-results.json', 'application/json');
     } else {
-      const csvHeader = 'URL,Status,Count\n';
-      const csvBody = results.map(r => `"${r.url.replace(/"/g, '""')}",${r.status},${r.count}`).join('\n');
+      const csvHeader = 'URL,IsDuplicate,Count,Positions\n';
+      const csvBody = results.map(r => `"${r.url.replace(/"/g, '""')}",${r.isDuplicate},${r.count},"${r.positions.join(',')}"`).join('\n');
       downloadFile(csvHeader + csvBody, 'url-detective-results.csv', 'text/csv');
     }
   }, [results, toast]);
 
   const handleScanMalicious = useCallback(() => {
-    const uniqueUrls = Array.from(new Set(results.map((r) => r.url)));
+    const uniqueUrls = results.map((r) => r.url);
     if (uniqueUrls.length === 0) {
       toast({
         variant: 'destructive',
@@ -245,7 +243,7 @@ export default function UrlProcessor() {
   const statCards = [
     { title: 'Total URLs', value: stats.total, icon: <FileText className="h-4 w-4 text-muted-foreground" /> },
     { title: 'Unique URLs', value: stats.unique, icon: <Copy className="h-4 w-4 text-muted-foreground" /> },
-    { title: 'Duplicate URLs', value: stats.duplicates, icon: <ClipboardCopy className="h-4 w-4 text-muted-foreground" /> },
+    { title: 'Duplicate Entries', value: stats.duplicates, icon: <ClipboardCopy className="h-4 w-4 text-muted-foreground" /> },
   ];
 
   return (
@@ -349,9 +347,9 @@ export default function UrlProcessor() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="w-2/3">URL</TableHead>
+                        <TableHead className="w-[55%]">URL</TableHead>
                         <TableHead>Status</TableHead>
-                        <TableHead>Count</TableHead>
+                        <TableHead>Details</TableHead>
                         <TableHead className="text-right">Threat</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -374,15 +372,20 @@ export default function UrlProcessor() {
                               <Badge
                                 variant="outline"
                                 className={cn(
-                                  item.status === 'NEW'
+                                  !item.isDuplicate
                                     ? 'border-green-500/50 text-green-600 dark:text-green-400'
                                     : 'border-amber-500/50 text-amber-600 dark:text-amber-400'
                                 )}
                               >
-                                {item.status}
+                                {item.isDuplicate ? 'DUPLICATE' : 'UNIQUE'}
                               </Badge>
                             </TableCell>
-                            <TableCell>{item.count > 1 ? item.count : '-'}</TableCell>
+                            <TableCell className="text-xs text-muted-foreground">
+                              {item.isDuplicate
+                                ? `${item.count} times in rows: ${item.positions.join(', ')}`
+                                : `Row: ${item.positions[0]}`
+                              }
+                            </TableCell>
                             <TableCell className="text-right">
                               {flag?.isLoading ? (
                                 <Loader2 className="inline-block h-4 w-4 animate-spin text-muted-foreground" />
