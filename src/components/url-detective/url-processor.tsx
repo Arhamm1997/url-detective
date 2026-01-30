@@ -14,6 +14,7 @@ import {
   Search,
   ShieldAlert,
   Trash2,
+  Upload,
   X,
 } from 'lucide-react';
 import React, {
@@ -211,7 +212,39 @@ export default function UrlProcessor() {
       downloadFile(csvHeader + csvBody, 'url-detective-results.csv', 'text/csv');
     }
   }, [results, toast]);
+  const handleFileUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
 
+    const validTypes = ['text/plain', 'text/csv', 'application/vnd.ms-excel'];
+    if (!validTypes.includes(file.type) && !file.name.endsWith('.txt') && !file.name.endsWith('.csv')) {
+      toast({
+        variant: 'destructive',
+        title: 'Invalid File Type',
+        description: 'Please upload a .txt or .csv file.',
+      });
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const content = e.target?.result as string;
+      const urls = content
+        .split('\n')
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .join('\n');
+      
+      setText((prev) => (prev ? prev + '\n' + urls : urls));
+      toast({
+        title: 'File Uploaded',
+        description: `${urls.split('\n').length} URL(s) added successfully.`,
+        action: <CheckCircle2 className="text-green-500" />,
+      });
+    };
+    reader.readAsText(file);
+    event.target.value = '';
+  }, [toast]);
   const handleScanMalicious = useCallback(() => {
     const uniqueUrls = results.map((r) => r.url);
     if (uniqueUrls.length === 0) {
@@ -283,7 +316,7 @@ export default function UrlProcessor() {
                 <div className="relative">
                   <Textarea
                     placeholder="Paste your URLs here, one per line..."
-                    className="min-h-[200px] w-full resize-y pr-12 text-base"
+                    className="min-h-[200px] w-full resize-y pr-24 text-base"
                     value={text}
                     onChange={(e) => setText(e.target.value)}
                   />
@@ -291,13 +324,32 @@ export default function UrlProcessor() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="absolute right-2 top-2 h-8 w-8 text-muted-foreground"
+                      className="absolute right-12 top-2 h-8 w-8 text-muted-foreground"
                       onClick={handleClear}
                     >
                       <X className="h-4 w-4" />
                       <span className="sr-only">Clear</span>
                     </Button>
                   )}
+                  <label className="absolute right-2 top-2">
+                    <input
+                      type="file"
+                      accept=".txt,.csv"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                    />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-muted-foreground cursor-pointer hover:text-foreground"
+                      asChild
+                    >
+                      <span>
+                        <Upload className="h-4 w-4" />
+                        <span className="sr-only">Upload file</span>
+                      </span>
+                    </Button>
+                  </label>
                 </div>
               </CardContent>
             </Card>
@@ -337,14 +389,6 @@ export default function UrlProcessor() {
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
-                    <Button onClick={handleScanMalicious} disabled={isScanning}>
-                      {isScanning ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : (
-                        <ShieldAlert className="mr-2 h-4 w-4" />
-                      )}
-                      Scan URLs
-                    </Button>
                   </div>
                 </div>
 
