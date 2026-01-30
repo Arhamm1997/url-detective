@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster"
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'URL Detective',
+  title: 'URL Detective by Arham',
   description: 'A modern tool to track and analyze lists of URLs for duplicates and potential threats.',
 };
 
