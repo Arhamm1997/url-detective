@@ -247,192 +247,173 @@ export default function UrlProcessor() {
 
   return (
     <TooltipProvider>
-      <div className="flex min-h-screen flex-col bg-background">
-        <header className="sticky top-0 z-10 border-b bg-background/80 backdrop-blur-sm">
-          <div className="container mx-auto flex h-16 items-center justify-between px-4">
-            <h1 className="font-headline text-2xl font-bold text-primary">
-              URL Detective
-            </h1>
-          </div>
-        </header>
+      <div className="grid gap-8">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          {statCards.map((stat, i) => (
+            <Card key={i}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
+                {stat.icon}
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stat.value}</div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
 
-        <main className="container mx-auto flex-1 p-4 md:p-8">
-          <div className="grid gap-8">
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-              {statCards.map((stat, i) => (
-                <Card key={i}>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
-                    {stat.icon}
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">{stat.value}</div>
-                  </CardContent>
-                </Card>
-              ))}
+        <Card>
+          <CardContent className="p-6">
+            <div className="relative">
+              <Textarea
+                placeholder="Paste your URLs here, one per line..."
+                className="min-h-[200px] w-full resize-y pr-12 text-base"
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+              />
+              {text && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-2 top-2 h-8 w-8 text-muted-foreground"
+                  onClick={handleClear}
+                >
+                  <X className="h-4 w-4" />
+                  <span className="sr-only">Clear</span>
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {results.length > 0 && (
+          <div className="space-y-4">
+            <div className="flex flex-col gap-2 md:flex-row md:items-center">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search URLs..."
+                  className="pl-9"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <Button onClick={handleCopyUnique} variant="outline">
+                  <Copy className="mr-2 h-4 w-4" /> Copy Unique
+                </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline">
+                        <Download className="mr-2 h-4 w-4" />
+                        Export
+                        <ChevronDown className="ml-2 h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => handleExport('csv')}>
+                        <FileText className="mr-2 h-4 w-4" />
+                        Export as CSV
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleExport('json')}>
+                        <FileJson className="mr-2 h-4 w-4" />
+                        Export as JSON
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                <Button onClick={handleScanMalicious} disabled={isScanning}>
+                  {isScanning ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <ShieldAlert className="mr-2 h-4 w-4" />
+                  )}
+                  Scan URLs
+                </Button>
+              </div>
             </div>
 
             <Card>
-              <CardContent className="p-6">
-                <div className="relative">
-                  <Textarea
-                    placeholder="Paste your URLs here, one per line..."
-                    className="min-h-[200px] w-full resize-y pr-12 text-base"
-                    value={text}
-                    onChange={(e) => setText(e.target.value)}
-                  />
-                  {text && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="absolute right-2 top-2 h-8 w-8 text-muted-foreground"
-                      onClick={handleClear}
-                    >
-                      <X className="h-4 w-4" />
-                      <span className="sr-only">Clear</span>
-                    </Button>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
-            {results.length > 0 && (
-              <div className="space-y-4">
-                <div className="flex flex-col gap-2 md:flex-row md:items-center">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Search URLs..."
-                      className="pl-9"
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button onClick={handleCopyUnique} variant="outline">
-                      <Copy className="mr-2 h-4 w-4" /> Copy Unique
-                    </Button>
-                     <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="outline">
-                            <Download className="mr-2 h-4 w-4" />
-                            Export
-                            <ChevronDown className="ml-2 h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => handleExport('csv')}>
-                            <FileText className="mr-2 h-4 w-4" />
-                            Export as CSV
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleExport('json')}>
-                            <FileJson className="mr-2 h-4 w-4" />
-                            Export as JSON
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    <Button onClick={handleScanMalicious} disabled={isScanning}>
-                      {isScanning ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : (
-                        <ShieldAlert className="mr-2 h-4 w-4" />
-                      )}
-                      Scan URLs
-                    </Button>
-                  </div>
-                </div>
-
-                <Card>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>URL Analysis</TableHead>
-                        <TableHead className="text-right">Threat</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredResults.map((item) => {
-                        const flag = maliciousFlags.get(item.url);
-                        return (
-                          <TableRow key={item.id}>
-                            <TableCell>
-                              <div className="flex items-center gap-3">
-                                {item.isDuplicate ? (
-                                  <AlertTriangle className="h-5 w-5 shrink-0 text-amber-500" />
-                                ) : (
-                                  <CheckCircle2 className="h-5 w-5 shrink-0 text-green-500" />
-                                )}
-                                <div className="flex-1 overflow-hidden">
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <p className="truncate font-mono text-sm">{item.url}</p>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                      <p>{item.url}</p>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                  <p className="text-xs text-muted-foreground">
-                                    {item.isDuplicate
-                                      ? `DUPLICATE (${item.count} times) - Found in rows: ${item.positions.join(', ')}`
-                                      : `UNIQUE - Found in row: ${item.positions[0]}`
-                                    }
-                                  </p>
-                                </div>
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              {flag?.isLoading ? (
-                                <Loader2 className="inline-block h-4 w-4 animate-spin text-muted-foreground" />
-                              ) : flag?.isMalicious ? (
-                                <Tooltip>
-                                  <TooltipTrigger>
-                                    <AlertCircle className="inline-block h-5 w-5 text-destructive" />
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                    <p className="max-w-xs font-semibold text-destructive">
-                                      Potentially Malicious
-                                    </p>
-                                    <p className="max-w-xs text-sm text-muted-foreground">
-                                      {flag.reason}
-                                    </p>
-                                  </TooltipContent>
-                                </Tooltip>
-                              ) : flag && !flag.isMalicious ? (
-                                <Tooltip>
-                                <TooltipTrigger>
-                                  <CheckCircle2 className="inline-block h-5 w-5 text-green-500" />
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>URL Analysis</TableHead>
+                    <TableHead className="text-right">Threat</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredResults.map((item) => {
+                    const flag = maliciousFlags.get(item.url);
+                    return (
+                      <TableRow key={item.id}>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            {item.isDuplicate ? (
+                              <AlertTriangle className="h-5 w-5 shrink-0 text-amber-500" />
+                            ) : (
+                              <CheckCircle2 className="h-5 w-5 shrink-0 text-green-500" />
+                            )}
+                            <div className="flex-1 overflow-hidden">
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <p className="truncate font-mono text-sm">{item.url}</p>
                                 </TooltipTrigger>
                                 <TooltipContent>
-                                  <p>Scanned: No threats detected</p>
+                                  <p>{item.url}</p>
                                 </TooltipContent>
                               </Tooltip>
-                              ): null}
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                  {filteredResults.length === 0 && (
-                     <div className="p-8 text-center text-muted-foreground">No matching URLs found.</div>
-                  )}
-                </Card>
-              </div>
-            )}
-             {results.length === 0 && text.length > 0 && debouncedText.length > 0 && (
-                <Card className="flex items-center justify-center p-12">
-                    <p className="text-muted-foreground">No valid URLs found in the input.</p>
-                </Card>
-             )}
+                              <p className="text-xs text-muted-foreground">
+                                {item.isDuplicate
+                                  ? `DUPLICATE (${item.count} times) - Found in rows: ${item.positions.join(', ')}`
+                                  : `UNIQUE - Found in row: ${item.positions[0]}`
+                                }
+                              </p>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {flag?.isLoading ? (
+                            <Loader2 className="inline-block h-4 w-4 animate-spin text-muted-foreground" />
+                          ) : flag?.isMalicious ? (
+                            <Tooltip>
+                              <TooltipTrigger>
+                                <AlertCircle className="inline-block h-5 w-5 text-destructive" />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p className="max-w-xs font-semibold text-destructive">
+                                  Potentially Malicious
+                                </p>
+                                <p className="max-w-xs text-sm text-muted-foreground">
+                                  {flag.reason}
+                                </p>
+                              </TooltipContent>
+                            </Tooltip>
+                          ) : flag && !flag.isMalicious ? (
+                            <Tooltip>
+                            <TooltipTrigger>
+                              <CheckCircle2 className="inline-block h-5 w-5 text-green-500" />
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Scanned: No threats detected</p>
+                            </TooltipContent>
+                          </Tooltip>
+                          ): null}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+              {filteredResults.length === 0 && (
+                  <div className="p-8 text-center text-muted-foreground">No matching URLs found.</div>
+              )}
+            </Card>
           </div>
-        </main>
-        <footer className="border-t">
-          <div className="container mx-auto flex h-14 items-center justify-center px-4">
-            <p className="text-sm text-muted-foreground">
-              Built with Next.js and Genkit.
-            </p>
-          </div>
-        </footer>
+        )}
+          {results.length === 0 && text.length > 0 && debouncedText.length > 0 && (
+            <Card className="flex items-center justify-center p-12">
+                <p className="text-muted-foreground">No valid URLs found in the input.</p>
+            </Card>
+          )}
       </div>
     </TooltipProvider>
   );
