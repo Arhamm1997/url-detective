@@ -16,7 +16,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { FileUp, Link as LinkIcon, Loader2 } from 'lucide-react';
 import React, { useState, useTransition } from 'react';
-import * as XLSX from 'xlsx';
 
 type UrlImportDialogProps = {
   open: boolean;
@@ -36,8 +35,9 @@ export function UrlImportDialog({ open, onOpenChange, onImport }: UrlImportDialo
 
     startParsing(() => {
       const reader = new FileReader();
-      reader.onload = (e) => {
+      reader.onload = async (e) => {
         try {
+          const XLSX = await import('xlsx');
           const data = e.target?.result;
           if (!data) throw new Error('File is empty.');
 
@@ -55,7 +55,7 @@ export function UrlImportDialog({ open, onOpenChange, onImport }: UrlImportDialo
             
             // Find the first column with content and assume it's the URL column
             let urlColumnIndex = -1;
-            if (json.length > 0) {
+            if (json.length > 0 && json[0]) {
               for (let i = 0; i < json[0].length; i++) {
                 if (json.some(row => row[i] && row[i].toString().trim())) {
                   urlColumnIndex = i;
@@ -98,6 +98,7 @@ export function UrlImportDialog({ open, onOpenChange, onImport }: UrlImportDialo
     }
     startFetching(async () => {
       try {
+        const XLSX = await import('xlsx');
         const csvText = await fetchGoogleSheet(sheetUrl);
         const workbook = XLSX.read(csvText, { type: 'string', raw: true });
         const sheetName = workbook.SheetNames[0];
