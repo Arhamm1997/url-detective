@@ -26,6 +26,12 @@ import React, {
 } from 'react';
 
 import { checkUrl } from '@/app/actions';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -271,7 +277,10 @@ export default function UrlProcessor() {
         </div>
 
         <Card>
-          <CardContent className="p-6">
+          <CardHeader>
+            <CardTitle>Bulk URL Counter</CardTitle>
+          </CardHeader>
+          <CardContent className="p-6 pt-0">
             <div className="relative">
               <Textarea
                 placeholder="Paste your URLs here, one per line, or import from a file..."
@@ -361,81 +370,90 @@ export default function UrlProcessor() {
               </div>
             </div>
 
-            <Card>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>URL Analysis</TableHead>
-                    <TableHead className="text-right">Threat</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredResults.map((item) => {
-                    const flag = maliciousFlags.get(item.url);
-                    return (
-                      <TableRow key={item.id}>
-                        <TableCell>
-                          <div className="flex items-center gap-3">
-                            {item.isDuplicate ? (
-                              <AlertTriangle className="h-5 w-5 shrink-0 text-amber-500" />
-                            ) : (
-                              <CheckCircle2 className="h-5 w-5 shrink-0 text-green-500" />
-                            )}
-                            <div className="flex-1 overflow-hidden">
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <p className="truncate font-mono text-sm">{item.url}</p>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p>{item.url}</p>
-                                </TooltipContent>
-                              </Tooltip>
-                              <p className="text-xs text-muted-foreground">
-                                {item.isDuplicate
-                                  ? `DUPLICATE (${item.count} times) - Found in rows: ${item.positions.join(', ')}`
-                                  : `UNIQUE - Found in row: ${item.positions[0]}`
-                                }
-                              </p>
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {flag?.isLoading ? (
-                            <Loader2 className="inline-block h-4 w-4 animate-spin text-muted-foreground" />
-                          ) : flag?.isMalicious ? (
-                            <Tooltip>
-                              <TooltipTrigger>
-                                <AlertCircle className="inline-block h-5 w-5 text-destructive" />
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p className="max-w-xs font-semibold text-destructive">
-                                  Potentially Malicious
-                                </p>
-                                <p className="max-w-xs text-sm text-muted-foreground">
-                                  {flag.reason}
-                                </p>
-                              </TooltipContent>
-                            </Tooltip>
-                          ) : flag && !flag.isMalicious ? (
-                            <Tooltip>
-                            <TooltipTrigger>
-                              <CheckCircle2 className="inline-block h-5 w-5 text-green-500" />
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>Scanned: No threats detected</p>
-                            </TooltipContent>
-                          </Tooltip>
-                          ): null}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-              {filteredResults.length === 0 && (
-                  <div className="p-8 text-center text-muted-foreground">No matching URLs found.</div>
-              )}
-            </Card>
+            <Accordion type="single" collapsible className="w-full" defaultValue="item-1">
+              <AccordionItem value="item-1">
+                <AccordionTrigger className="text-xl font-semibold">
+                  URL Analysis
+                </AccordionTrigger>
+                <AccordionContent>
+                  <Card>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>URL Details</TableHead>
+                          <TableHead className="text-right">Threat</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredResults.map((item) => {
+                          const flag = maliciousFlags.get(item.url);
+                          return (
+                            <TableRow key={item.id}>
+                              <TableCell>
+                                <div className="flex items-center gap-3">
+                                  {item.isDuplicate ? (
+                                    <AlertTriangle className="h-5 w-5 shrink-0 text-amber-500" />
+                                  ) : (
+                                    <CheckCircle2 className="h-5 w-5 shrink-0 text-green-500" />
+                                  )}
+                                  <div className="flex-1 overflow-hidden">
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <p className="truncate font-mono text-sm">{item.url}</p>
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        <p>{item.url}</p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                    <p className="text-xs text-muted-foreground">
+                                      {item.isDuplicate
+                                        ? `DUPLICATE (${item.count} times) - Found in rows: ${item.positions.join(', ')}`
+                                        : `UNIQUE - Found in row: ${item.positions[0]}`
+                                      }
+                                    </p>
+                                  </div>
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                {flag?.isLoading ? (
+                                  <Loader2 className="inline-block h-4 w-4 animate-spin text-muted-foreground" />
+                                ) : flag?.isMalicious ? (
+                                  <Tooltip>
+                                    <TooltipTrigger>
+                                      <AlertCircle className="inline-block h-5 w-5 text-destructive" />
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p className="max-w-xs font-semibold text-destructive">
+                                        Potentially Malicious
+                                      </p>
+                                      <p className="max-w-xs text-sm text-muted-foreground">
+                                        {flag.reason}
+                                      </p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                ) : flag && !flag.isMalicious ? (
+                                  <Tooltip>
+                                  <TooltipTrigger>
+                                    <CheckCircle2 className="inline-block h-5 w-5 text-green-500" />
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>Scanned: No threats detected</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                                ): null}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                    {filteredResults.length === 0 && (
+                        <div className="p-8 text-center text-muted-foreground">No matching URLs found.</div>
+                    )}
+                  </Card>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
           </div>
         )}
           {results.length === 0 && text.length > 0 && debouncedText.length > 0 && (
