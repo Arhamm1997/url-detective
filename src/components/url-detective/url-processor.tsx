@@ -216,12 +216,12 @@ export default function UrlProcessor() {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    const validTypes = ['text/plain', 'text/csv', 'application/vnd.ms-excel'];
-    if (!validTypes.includes(file.type) && !file.name.endsWith('.txt') && !file.name.endsWith('.csv')) {
+    const validTypes = ['text/plain', 'text/csv', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'];
+    if (!validTypes.includes(file.type) && !file.name.endsWith('.txt') && !file.name.endsWith('.csv') && !file.name.endsWith('.xlsx')) {
       toast({
         variant: 'destructive',
         title: 'Invalid File Type',
-        description: 'Please upload a .txt or .csv file.',
+        description: 'Please upload a .txt, .csv, or .xlsx file.',
       });
       return;
     }
@@ -334,7 +334,7 @@ export default function UrlProcessor() {
                   <label className="absolute right-2 top-2">
                     <input
                       type="file"
-                      accept=".txt,.csv"
+                      accept=".txt,.csv,.xlsx"
                       onChange={handleFileUpload}
                       className="hidden"
                     />
