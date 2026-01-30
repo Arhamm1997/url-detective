@@ -8,6 +8,7 @@ import {
   Copy,
   Download,
   FileText,
+  FileUp,
   Globe,
   History,
   Info,
@@ -29,6 +30,7 @@ import { Progress } from '@/components/ui/progress';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { UrlImportDialog } from '@/components/url-import/url-import-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
@@ -48,6 +50,7 @@ export default function StatusCheckerClient() {
     const [searchTerm, setSearchTerm] = useState('');
     const [sortConfig, setSortConfig] = useState<SortConfig>({ key: 'url', direction: 'asc' });
     const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+    const [isImporting, setIsImporting] = useState(false);
     const { toast } = useToast();
 
     const isValidUrl = (str: string) => {
@@ -182,6 +185,10 @@ export default function StatusCheckerClient() {
             downloadFile(data.map(r => r.url).join('\n'), 'urls.txt', 'text/plain');
         }
     };
+
+    const handleImport = (urls: string) => {
+        setUrlsInput(prev => prev ? `${prev}\n${urls}` : urls);
+    };
     
     const statCards = [
         { title: "Total URLs Checked", value: stats.total, icon: Globe },
@@ -210,6 +217,7 @@ export default function StatusCheckerClient() {
 
     return (
         <TooltipProvider>
+            <UrlImportDialog open={isImporting} onOpenChange={setIsImporting} onImport={handleImport} />
             <div className="space-y-8">
                 <Card>
                     <CardHeader>
@@ -217,13 +225,16 @@ export default function StatusCheckerClient() {
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <Textarea
-                            placeholder="Paste your URLs here, one per line..."
+                            placeholder="Paste your URLs here, one per line, or import from a file..."
                             className="min-h-[200px] w-full resize-y text-base"
                             value={urlsInput}
                             onChange={(e) => setUrlsInput(e.target.value)}
                             disabled={isChecking}
                         />
                         <div className="flex flex-wrap gap-2">
+                            <Button onClick={() => setIsImporting(true)} variant="outline" disabled={isChecking}>
+                                <FileUp className="mr-2 h-4 w-4" /> Import URLs
+                            </Button>
                              <Button onClick={() => setUrlsInput('')} variant="ghost" disabled={isChecking || !urlsInput}>
                                 <Trash2 className="mr-2 h-4 w-4" /> Clear
                             </Button>

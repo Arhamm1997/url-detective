@@ -10,6 +10,7 @@ import {
   Download,
   FileJson,
   FileText,
+  FileUp,
   Loader2,
   Search,
   ShieldAlert,
@@ -54,6 +55,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { UrlImportDialog } from '@/components/url-import/url-import-dialog';
 import { useToast } from '@/hooks/use-toast';
 
 type ProcessedUrl = {
@@ -90,6 +92,7 @@ export default function UrlProcessor() {
   );
   const [searchTerm, setSearchTerm] = useState('');
   const [isScanning, startScanning] = useTransition();
+  const [isImporting, setIsImporting] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -239,6 +242,10 @@ export default function UrlProcessor() {
     });
   }, [results, toast]);
 
+  const handleImport = (urls: string) => {
+    setText(prev => prev ? `${prev}\n${urls}` : urls);
+  };
+
   const statCards = [
     { title: 'Total URLs', value: stats.total, icon: <FileText className="h-4 w-4 text-muted-foreground" /> },
     { title: 'Unique URLs', value: stats.unique, icon: <Copy className="h-4 w-4 text-muted-foreground" /> },
@@ -247,6 +254,7 @@ export default function UrlProcessor() {
 
   return (
     <TooltipProvider>
+      <UrlImportDialog open={isImporting} onOpenChange={setIsImporting} onImport={handleImport} />
       <div className="grid gap-8">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           {statCards.map((stat, i) => (
@@ -266,22 +274,43 @@ export default function UrlProcessor() {
           <CardContent className="p-6">
             <div className="relative">
               <Textarea
-                placeholder="Paste your URLs here, one per line..."
+                placeholder="Paste your URLs here, one per line, or import from a file..."
                 className="min-h-[200px] w-full resize-y pr-12 text-base"
                 value={text}
                 onChange={(e) => setText(e.target.value)}
               />
-              {text && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="absolute right-2 top-2 h-8 w-8 text-muted-foreground"
-                  onClick={handleClear}
-                >
-                  <X className="h-4 w-4" />
-                  <span className="sr-only">Clear</span>
-                </Button>
-              )}
+              <div className="absolute right-2 top-2 flex flex-col gap-2">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-muted-foreground"
+                      onClick={() => setIsImporting(true)}
+                    >
+                      <FileUp className="h-4 w-4" />
+                      <span className="sr-only">Import URLs</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Import URLs</TooltipContent>
+                </Tooltip>
+                {text && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground"
+                        onClick={handleClear}
+                      >
+                        <X className="h-4 w-4" />
+                        <span className="sr-only">Clear</span>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Clear Input</TooltipContent>
+                  </Tooltip>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>

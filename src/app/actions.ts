@@ -17,3 +17,35 @@ export async function checkUrl(
     return { isMalicious: false, reason: 'An error occurred during analysis.' };
   }
 }
+
+
+export async function fetchGoogleSheet(url: string): Promise<string> {
+  if (!url.startsWith('https://docs.google.com/spreadsheets/d/')) {
+    throw new Error('Invalid Google Sheet URL. Please use a valid shareable link.');
+  }
+
+  try {
+    const sheetIdRegex = /spreadsheets\/d\/([a-zA-Z0-9-_]+)/;
+    const match = url.match(sheetIdRegex);
+    if (!match || !match[1]) {
+      throw new Error('Could not extract Sheet ID from the URL.');
+    }
+    const sheetId = match[1];
+
+    // Assumes the first sheet is the target
+    const exportUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv`;
+
+    const response = await fetch(exportUrl);
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch sheet data. Status: ${response.statusText}`);
+    }
+
+    const csvText = await response.text();
+    return csvText;
+
+  } catch (error: any) {
+    console.error('Google Sheet fetch error:', error);
+    throw new Error(error.message || 'An unknown error occurred while fetching the sheet.');
+  }
+}
