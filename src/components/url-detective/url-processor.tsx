@@ -189,9 +189,7 @@ export default function UrlProcessor() {
   }, [results, handleCopyToClipboard, toast]);
 
   const handleCopyUniqueAsCSV = useCallback(() => {
-    const uniqueUrls = results
-      .filter((r) => !r.isDuplicate)
-      .map((r) => r.url);
+    const uniqueUrls = results.map((r) => r.url);
     if (uniqueUrls.length > 0) {
       const csvHeader = 'URL\n';
       const csvBody = uniqueUrls.map(url => `"${url.replace(/"/g, '""')}"`).join('\n');
