@@ -10,7 +10,6 @@ import {
   Download,
   FileJson,
   FileText,
-  Link as LinkIcon,
   Loader2,
   Search,
   ShieldAlert,
@@ -98,8 +97,6 @@ export default function UrlProcessor() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isScanning, startScanning] = useTransition();
   const [isCountSummaryOpen, setIsCountSummaryOpen] = useState(true);
-  const [googleDocUrl, setGoogleDocUrl] = useState('');
-  const [isLoadingGoogleDoc, setIsLoadingGoogleDoc] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -189,6 +186,23 @@ export default function UrlProcessor() {
     }
   }, [results, handleCopyToClipboard, toast]);
 
+  const handleCopyUniqueAsCSV = useCallback(() => {
+    const uniqueUrls = results
+      .filter((r) => !r.isDuplicate)
+      .map((r) => r.url);
+    if (uniqueUrls.length > 0) {
+      const csvHeader = 'URL\n';
+      const csvBody = uniqueUrls.map(url => `"${url.replace(/"/g, '""')}"`).join('\n');
+      handleCopyToClipboard(csvHeader + csvBody, 'Unique URLs (CSV)');
+    } else {
+      toast({
+        variant: 'destructive',
+        title: 'Nothing to Copy',
+        description: 'There are no unique URLs to copy.',
+      });
+    }
+  }, [results, handleCopyToClipboard, toast]);
+
   const downloadFile = (content: string, fileName: string, mimeType: string) => {
     const blob = new Blob([content], { type: mimeType });
     const url = URL.createObjectURL(blob);
@@ -215,117 +229,35 @@ export default function UrlProcessor() {
       downloadFile(csvHeader + csvBody, 'url-detective-results.csv', 'text/csv');
     }
   }, [results, toast]);
-  
-  const handleGoogleDocsFetch = useCallback(async () => {
-    if (!googleDocUrl.trim()) {
-      toast({
-        variant: 'destructive',
-        title: 'Invalid URL',
-        description: 'Please enter a valid Google Docs link.',
-      });
-      return;
-    }
-
-    try {
-      setIsLoadingGoogleDoc(true);
-      
-      const docIdMatch = googleDocUrl.match(/\/d\/([a-zA-Z0-9-_]+)/);
-      
-      if (!docIdMatch) {
-        throw new Error('Invalid Google Docs URL format');
-      }
-      
-      const docId = docIdMatch[1];
-      const exportUrl = `https://docs.google.com/document/d/${docId}/export?format=txt`;
-      
-      const response = await fetch(exportUrl);
-      if (!response.ok) {
-        throw new Error('Failed to fetch Google Docs. Make sure the document is publicly shared.');
-      }
-      
-      const content = await response.text();
-      const urls = content
-        .split('\n')
-        .map((line) => line.trim())
-        .filter(line => line.startsWith('http://') || line.startsWith('https://'))
-        .join('\n');
-      
-      if (urls.length === 0) {
-        toast({
-          variant: 'destructive',
-          title: 'No URLs Found',
-          description: 'No URLs found in the Google Docs document.',
-        });
-        return;
-      }
-      
-      setText((prev) => (prev ? prev + '\n' + urls : urls));
-      setGoogleDocUrl('');
-      
-      toast({
-        title: 'Google Docs Fetched',
-        description: `${urls.split('\n').length} URL(s) extracted successfully.`,
-        action: <CheckCircle2 className="text-green-500" />,
-      });
-    } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Error Fetching Google Docs',
-        description: error instanceof Error ? error.message : 'Failed to fetch the document. Please check the URL and sharing settings.',
-      });
-    } finally {
-      setIsLoadingGoogleDoc(false);
-    }
-  }, [googleDocUrl, toast]);
-
   const handleFileUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    const isTxt = file.name.endsWith('.txt');
-    const isCsv = file.name.endsWith('.csv');
-    
-    if (!isTxt && !isCsv) {
+    const validTypes = ['text/plain', 'text/csv', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'];
+    if (!validTypes.includes(file.type) && !file.name.endsWith('.txt') && !file.name.endsWith('.csv') && !file.name.endsWith('.xlsx')) {
       toast({
         variant: 'destructive',
         title: 'Invalid File Type',
-        description: 'Please upload a .txt or .csv file.',
+        description: 'Please upload a .txt, .csv, or .xlsx file.',
       });
       return;
     }
 
     const reader = new FileReader();
     reader.onload = (e) => {
-      try {
-        const content = e.target?.result as string;
-        const urls = content
-          .split('\n')
-          .map((line) => line.trim())
-          .filter(Boolean)
-          .join('\n');
-        
-        if (urls.length === 0) {
-          toast({
-            variant: 'destructive',
-            title: 'No URLs Found',
-            description: 'The file appears to be empty or invalid.',
-          });
-          return;
-        }
-        
-        setText((prev) => (prev ? prev + '\n' + urls : urls));
-        toast({
-          title: 'File Uploaded',
-          description: `${urls.split('\n').length} URL(s) added successfully.`,
-          action: <CheckCircle2 className="text-green-500" />,
-        });
-      } catch (error) {
-        toast({
-          variant: 'destructive',
-          title: 'Error Reading File',
-          description: 'Could not read file. Please try again.',
-        });
-      }
+      const content = e.target?.result as string;
+      const urls = content
+        .split('\n')
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .join('\n');
+      
+      setText((prev) => (prev ? prev + '\n' + urls : urls));
+      toast({
+        title: 'File Uploaded',
+        description: `${urls.split('\n').length} URL(s) added successfully.`,
+        action: <CheckCircle2 className="text-green-500" />,
+      });
     };
     reader.readAsText(file);
     event.target.value = '';
@@ -419,7 +351,7 @@ export default function UrlProcessor() {
                   <label className="absolute right-2 top-2">
                     <input
                       type="file"
-                      accept=".txt,.csv"
+                      accept=".txt,.csv,.xlsx"
                       onChange={handleFileUpload}
                       className="hidden"
                     />
@@ -435,36 +367,6 @@ export default function UrlProcessor() {
                       </span>
                     </Button>
                   </label>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Fetch from Google Docs</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <p className="text-sm text-muted-foreground">
-                  Paste a public Google Docs link to extract URLs from it.
-                </p>
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="https://docs.google.com/document/d/..."
-                    value={googleDocUrl}
-                    onChange={(e) => setGoogleDocUrl(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && handleGoogleDocsFetch()}
-                  />
-                  <Button
-                    onClick={handleGoogleDocsFetch}
-                    disabled={isLoadingGoogleDoc || !googleDocUrl.trim()}
-                  >
-                    {isLoadingGoogleDoc ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                      <LinkIcon className="mr-2 h-4 w-4" />
-                    )}
-                    Fetch
-                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -494,6 +396,10 @@ export default function UrlProcessor() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => handleCopyUniqueAsCSV()}>
+                            <ClipboardCopy className="mr-2 h-4 w-4" />
+                            Copy Unique URLs as CSV
+                          </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => handleExport('csv')}>
                             <FileText className="mr-2 h-4 w-4" />
                             Export as CSV
