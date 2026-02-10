@@ -10,11 +10,11 @@ import {
   Download,
   FileJson,
   FileText,
+  FileUp,
   Loader2,
   Search,
   ShieldAlert,
   Trash2,
-  Upload,
   X,
 } from 'lucide-react';
 import React, {
@@ -26,6 +26,12 @@ import React, {
 } from 'react';
 
 import { checkUrl } from '@/app/actions';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -33,11 +39,6 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -60,6 +61,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { UrlImportDialog } from '@/components/url-import/url-import-dialog';
 import { useToast } from '@/hooks/use-toast';
 
 type ProcessedUrl = {
@@ -96,7 +98,7 @@ export default function UrlProcessor() {
   );
   const [searchTerm, setSearchTerm] = useState('');
   const [isScanning, startScanning] = useTransition();
-  const [isCountSummaryOpen, setIsCountSummaryOpen] = useState(true);
+  const [isImporting, setIsImporting] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -229,39 +231,7 @@ export default function UrlProcessor() {
       downloadFile(csvHeader + csvBody, 'url-detective-results.csv', 'text/csv');
     }
   }, [results, toast]);
-  const handleFileUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
 
-    const validTypes = ['text/plain', 'text/csv', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'];
-    if (!validTypes.includes(file.type) && !file.name.endsWith('.txt') && !file.name.endsWith('.csv') && !file.name.endsWith('.xlsx')) {
-      toast({
-        variant: 'destructive',
-        title: 'Invalid File Type',
-        description: 'Please upload a .txt, .csv, or .xlsx file.',
-      });
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const content = e.target?.result as string;
-      const urls = content
-        .split('\n')
-        .map((line) => line.trim())
-        .filter(Boolean)
-        .join('\n');
-      
-      setText((prev) => (prev ? prev + '\n' + urls : urls));
-      toast({
-        title: 'File Uploaded',
-        description: `${urls.split('\n').length} URL(s) added successfully.`,
-        action: <CheckCircle2 className="text-green-500" />,
-      });
-    };
-    reader.readAsText(file);
-    event.target.value = '';
-  }, [toast]);
   const handleScanMalicious = useCallback(() => {
     const uniqueUrls = results.map((r) => r.url);
     if (uniqueUrls.length === 0) {
@@ -295,6 +265,10 @@ export default function UrlProcessor() {
     });
   }, [results, toast]);
 
+  const handleImport = (urls: string) => {
+    setText(prev => prev ? `${prev}\n${urls}` : urls);
+  };
+
   const statCards = [
     { title: 'Total URLs', value: stats.total, icon: <FileText className="h-4 w-4 text-muted-foreground" /> },
     { title: 'Unique URLs', value: stats.unique, icon: <Copy className="h-4 w-4 text-muted-foreground" /> },
@@ -303,168 +277,211 @@ export default function UrlProcessor() {
 
   return (
     <TooltipProvider>
-      <div className="flex min-h-screen flex-col bg-background">
-        <header className="sticky top-0 z-10 border-b bg-background/80 backdrop-blur-sm">
-          <div className="container mx-auto flex h-16 items-center justify-between px-4">
-            <h1 className="font-headline text-2xl font-bold text-primary">
-              Posts URL Counter by Arham
-            </h1>
-          </div>
-        </header>
-
-        <main className="container mx-auto flex-1 p-4 md:p-8">
-          <div className="grid gap-8">
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-              {statCards.map((stat, i) => (
-                <Card key={i}>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
-                    {stat.icon}
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">{stat.value}</div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-
-            <Card>
-              <CardContent className="p-6">
-                <div className="relative">
-                  <Textarea
-                    placeholder="Paste your URLs here, one per line..."
-                    className="min-h-[200px] w-full resize-y pr-24 text-base"
-                    value={text}
-                    onChange={(e) => setText(e.target.value)}
-                  />
-                  {text && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="absolute right-12 top-2 h-8 w-8 text-muted-foreground"
-                      onClick={handleClear}
-                    >
-                      <X className="h-4 w-4" />
-                      <span className="sr-only">Clear</span>
-                    </Button>
-                  )}
-                  <label className="absolute right-2 top-2">
-                    <input
-                      type="file"
-                      accept=".txt,.csv,.xlsx"
-                      onChange={handleFileUpload}
-                      className="hidden"
-                    />
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-muted-foreground cursor-pointer hover:text-foreground"
-                      asChild
-                    >
-                      <span>
-                        <Upload className="h-4 w-4" />
-                        <span className="sr-only">Upload file</span>
-                      </span>
-                    </Button>
-                  </label>
-                </div>
+      <UrlImportDialog open={isImporting} onOpenChange={setIsImporting} onImport={handleImport} />
+      <div className="grid gap-8">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          {statCards.map((stat, i) => (
+            <Card key={i}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
+                {stat.icon}
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stat.value}</div>
               </CardContent>
             </Card>
+          ))}
+        </div>
 
-            {results.length > 0 && (
-              <div className="space-y-4">
-                <div className="flex flex-col gap-2 md:flex-row md:items-center">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Search URLs..."
-                      className="pl-9"
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button onClick={handleCopyUnique} variant="outline">
-                      <Copy className="mr-2 h-4 w-4" /> Copy Unique
+        <Card>
+          <CardHeader>
+            <CardTitle>Bulk URL Counter</CardTitle>
+          </CardHeader>
+          <CardContent className="p-6 pt-0">
+            <div className="relative">
+              <Textarea
+                placeholder="Paste your URLs here, one per line, or import from a file..."
+                className="min-h-[200px] w-full resize-y pr-12 text-base"
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+              />
+              <div className="absolute right-2 top-2 flex flex-col gap-2">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-muted-foreground"
+                      onClick={() => setIsImporting(true)}
+                    >
+                      <FileUp className="h-4 w-4" />
+                      <span className="sr-only">Import URLs</span>
                     </Button>
-                     <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="outline">
-                            <Download className="mr-2 h-4 w-4" />
-                            Export
-                            <ChevronDown className="ml-2 h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => handleCopyUniqueAsCSV()}>
-                            <ClipboardCopy className="mr-2 h-4 w-4" />
-                            Copy Unique URLs as CSV
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleExport('csv')}>
-                            <FileText className="mr-2 h-4 w-4" />
-                            Export as CSV
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleExport('json')}>
-                            <FileJson className="mr-2 h-4 w-4" />
-                            Export as JSON
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                  </div>
-                </div>
-
-                <Card>
-                  <Collapsible open={isCountSummaryOpen} onOpenChange={setIsCountSummaryOpen}>
-                    <CollapsibleTrigger asChild>
-                      <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
-                        <div className="flex items-center justify-between">
-                          <CardTitle className="text-lg">URL Count Summary</CardTitle>
-                          <ChevronDown className={`h-5 w-5 transition-transform duration-200 ${isCountSummaryOpen ? 'rotate-180' : ''}`} />
-                        </div>
-                        <p className="mt-2 text-sm text-muted-foreground">
-                          {results.filter(r => r.count > 1).length} URL(s) appear multiple times
-                        </p>
-                      </CardHeader>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent>
-                      <CardContent>
-                        <div className="grid grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-3">
-                          {results.filter(r => r.count > 1).map((item) => (
-                            <div key={item.id} className="flex items-center justify-between rounded-lg border p-3">
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <p className="truncate font-mono text-sm">{item.url}</p>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p>{item.url}</p>
-                                </TooltipContent>
-                              </Tooltip>
-                              <span className="ml-2 inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                                {item.count}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </CardContent>
-                    </CollapsibleContent>
-                  </Collapsible>
-                </Card>
+                  </TooltipTrigger>
+                  <TooltipContent>Import URLs</TooltipContent>
+                </Tooltip>
+                {text && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground"
+                        onClick={handleClear}
+                      >
+                        <X className="h-4 w-4" />
+                        <span className="sr-only">Clear</span>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Clear Input</TooltipContent>
+                  </Tooltip>
+                )}
               </div>
-            )}
-             {results.length === 0 && text.length > 0 && debouncedText.length > 0 && (
-                <Card className="flex items-center justify-center p-12">
-                    <p className="text-muted-foreground">No valid URLs found in the input.</p>
-                </Card>
-             )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {results.length > 0 && (
+          <div className="space-y-4">
+            <div className="flex flex-col gap-2 md:flex-row md:items-center">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search URLs..."
+                  className="pl-9"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <Button onClick={handleCopyUnique} variant="outline">
+                  <Copy className="mr-2 h-4 w-4" /> Copy Unique
+                </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline">
+                        <Download className="mr-2 h-4 w-4" />
+                        Export
+                        <ChevronDown className="ml-2 h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => handleCopyUniqueAsCSV()}>
+                        <ClipboardCopy className="mr-2 h-4 w-4" />
+                        Copy Unique URLs as CSV
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleExport('csv')}>
+                        <FileText className="mr-2 h-4 w-4" />
+                        Export as CSV
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleExport('json')}>
+                        <FileJson className="mr-2 h-4 w-4" />
+                        Export as JSON
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                <Button onClick={handleScanMalicious} disabled={isScanning}>
+                  {isScanning ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <ShieldAlert className="mr-2 h-4 w-4" />
+                  )}
+                  Scan URLs
+                </Button>
+              </div>
+            </div>
+
+            <Accordion type="single" collapsible className="w-full" defaultValue="item-1">
+              <AccordionItem value="item-1">
+                <AccordionTrigger className="text-xl font-semibold">
+                  URL Analysis
+                </AccordionTrigger>
+                <AccordionContent>
+                  <Card>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>URL Details</TableHead>
+                          <TableHead className="text-right">Threat</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredResults.map((item) => {
+                          const flag = maliciousFlags.get(item.url);
+                          return (
+                            <TableRow key={item.id}>
+                              <TableCell>
+                                <div className="flex items-center gap-3">
+                                  {item.isDuplicate ? (
+                                    <AlertTriangle className="h-5 w-5 shrink-0 text-amber-500" />
+                                  ) : (
+                                    <CheckCircle2 className="h-5 w-5 shrink-0 text-green-500" />
+                                  )}
+                                  <div className="flex-1 overflow-hidden">
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <p className="truncate font-mono text-sm">{item.url}</p>
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        <p>{item.url}</p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                    <p className="text-xs text-muted-foreground">
+                                      {item.isDuplicate
+                                        ? `DUPLICATE (${item.count} times) - Found in rows: ${item.positions.join(', ')}`
+                                        : `UNIQUE - Found in row: ${item.positions[0]}`
+                                      }
+                                    </p>
+                                  </div>
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                {flag?.isLoading ? (
+                                  <Loader2 className="inline-block h-4 w-4 animate-spin text-muted-foreground" />
+                                ) : flag?.isMalicious ? (
+                                  <Tooltip>
+                                    <TooltipTrigger>
+                                      <AlertCircle className="inline-block h-5 w-5 text-destructive" />
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p className="max-w-xs font-semibold text-destructive">
+                                        Potentially Malicious
+                                      </p>
+                                      <p className="max-w-xs text-sm text-muted-foreground">
+                                        {flag.reason}
+                                      </p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                ) : flag && !flag.isMalicious ? (
+                                  <Tooltip>
+                                  <TooltipTrigger>
+                                    <CheckCircle2 className="inline-block h-5 w-5 text-green-500" />
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>Scanned: No threats detected</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                                ): null}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                    {filteredResults.length === 0 && (
+                        <div className="p-8 text-center text-muted-foreground">No matching URLs found.</div>
+                    )}
+                  </Card>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
           </div>
-        </main>
-        <footer className="border-t">
-          <div className="container mx-auto flex h-14 items-center justify-center px-4">
-            <p className="text-sm text-muted-foreground">
-              Built with Next.js and Genkit.
-            </p>
-          </div>
-        </footer>
+        )}
+          {results.length === 0 && text.length > 0 && debouncedText.length > 0 && (
+            <Card className="flex items-center justify-center p-12">
+                <p className="text-muted-foreground">No valid URLs found in the input.</p>
+            </Card>
+          )}
       </div>
     </TooltipProvider>
   );
